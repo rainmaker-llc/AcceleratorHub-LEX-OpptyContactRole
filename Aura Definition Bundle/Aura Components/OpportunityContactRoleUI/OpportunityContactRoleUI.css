@@ -1,0 +1,9 @@
+.THIS .options label{
+    display: none;
+}
+.THIS .lightningRadioButtons div{
+        margin-left: 40%;
+}
+.THIS .communlativeNameField .slds-form-compound legend{
+       display:none;
+}

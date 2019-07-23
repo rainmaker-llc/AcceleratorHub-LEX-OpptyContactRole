@@ -1,0 +1,283 @@
+<aura:component controller="OpportunityContactRoleCmp_LEXCtrl" implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" >
+    <aura:attribute name="ContactRoleRecords" type="list" default="[]"/>
+    <aura:attribute name="ContactRoleRecordsForEdit" type="list" default="[]"/>
+    <aura:attribute name="ContactFields" type="Object" default="{}"/>
+    <aura:attribute name="roleOptions" type="list" default="[]"/>
+    <aura:attribute name="BooleanFields" type="list" default="[]"/>
+    <aura:attribute name="isEditable" type="Boolean" default="false"/>
+    <aura:attribute name="PrimaryIndex" type="integer" default="[]"/>
+    <aura:attribute name="NumberOfRecords" type="integer" default="0"/>
+    <aura:attribute name="NewRecord" type="Boolean" default="false"/>
+    <aura:attribute name="singleContactRecord" type="sobject" default="{}"/>
+    <aura:attribute name="NewContactRecordIndex" type="Integer" default="-1"/>
+    <aura:attribute name="showSpinner" type="Boolean" default="true"/>
+    <aura:attribute name="OpportunityRecord" type="sobject" default="{}"/>
+    <aura:attribute name="ContactRecordTypes" type="list" default="[]"/>
+    <aura:attribute name="selectedContactRecordType" type="String" default=""/>
+    <aura:attribute name="selectedContactRecordTypeLabel" type="String" default=""/>
+    <aura:attribute name="selectContactRecordType" type="Boolean" default="false"/>
+    <aura:attribute name="onlyMasterContactRecordType" type="Boolean" default="false"/>
+    <!-->Handler init method </--> 
+    <aura:handler name="init" value="{!this}" action="{!c.init}"/>
+    <!--declare events hendlers-->
+    <aura:handler name="LEX_RecordChangeEvent" event="c:OpportunityContactRoleChangeRecordEvent" action="{!c.handleRecordChangeEvent}"/>
+    
+    <aura:if isTrue="{! v.showSpinner }">
+        <lightning:spinner alternativeText="Loading" size="medium" variant="brand"/>
+    </aura:if>
+    
+    <article class="slds-card">
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <span class="slds-icon_container slds-icon-standard-contact" title="contact">
+                        <lightning:icon iconName="standard:contact" size="small" alternativeText="Close"/>
+                        <span class="slds-assistive-text">Contact Roles</span>
+                    </span>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">
+                        <a href="javascript:void(0);" class="slds-card__header-link slds-truncate" title="{!'Contact Roles ('+ v.NumberOfRecords + ')'}">
+                            <span>Contact Roles ({!v.NumberOfRecords})</span>
+                        </a>
+                    </h2>
+                </div>
+                <div class="slds-no-flex">
+                    <lightning:button class="slds-button slds-button_neutral" label="Edit Contact Roles" onclick="{!c.EditContactRoles}"/>
+                </div>
+            </header>
+        </div>
+        <div class="slds-card__body">
+            <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                <thead>
+                    <tr class="slds-line-height_reset">
+                        <th class="slds-text-title_caps" scope="col" col-span="1">
+                            <div class="slds-truncate" title="Contact Name">Contact Name</div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col" col-span="1">
+                            <div class="slds-truncate" title="Account Name">Account Name</div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col" col-span="1">
+                            <div class="slds-truncate" title="Role">Role</div>
+                        </th>
+                        <th class="slds-text-title_caps" scope="col" col-span="1">
+                            <div class="slds-truncate" title="Primary">Primary</div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <aura:iteration items="{!v.ContactRoleRecords}" var="record">
+                        <aura:if isTrue="{! !empty(record.ContactRoleId)}">
+                            <tr>
+                                <td col-span="1">
+                                    <a href="{!'/'+record.contactRecord.Id}"> {!record.contactRecord.Name}</a>
+                                </td>
+                                <td col-span="1">
+                                    <a href="{!'/'+record.AccountRecord.Id}"> {!record.AccountRecord.Name}</a>
+                                </td>
+                                <td col-span="1">
+                                    {!record.Role}
+                                </td> 
+                                <td col-span="1">
+                                    <lightning:input type="checkbox" label="" name="isPrimary" checked="{!record.isPrimary}" disabled="true"/>
+                                </td>
+                            </tr>
+                        </aura:if>
+                    </aura:iteration>
+                </tbody>
+            </table>  
+        </div>
+    </article>
+    
+    <aura:if isTrue="{!v.isEditable}">
+        <aura:if isTrue="{!v.NewRecord}">
+            <aura:if isTrue="{!v.selectContactRecordType}">
+                <!--Record Type Selection-->
+                <div style="height:640px">
+                    <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
+                        <div class="slds-modal__container">
+                            <aura:if isTrue="{! v.showSpinner }">
+                                <lightning:spinner style="background-color: transparent;" alternativeText="Loading" size="medium" variant="brand"/>
+                            </aura:if>
+                            <header class="slds-modal__header" style="background-color: lightgray;">
+                                <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick="{!c.CancelNewRecord}">
+                                    <lightning:icon iconName="utility:close" size="x-small" alternativeText="Close"/>
+                                    <span class="slds-assistive-text">Close</span>
+                                </button>
+                                <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">New Contact</h2>
+                            </header>
+                            <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1" style="border: 1px solid lightgray;">
+                                <lightning:radioGroup name="radioGroupRequired"
+                                                      label="Select a record type"
+                                                      options="{! v.ContactRecordTypes }"
+                                                      value="{! v.selectedContactRecordType }"
+                                                      type="radio"
+                                                      class="lightningRadioButtons"
+                                                      required="true"/>
+                            </div>
+                            <footer class="slds-modal__footer">
+                                <lightning:button label="Cancel" class="slds-button slds-button_neutral" onclick="{!c.CancelNewRecord}"/>
+                                <lightning:button  variant="brand" name="next" label="Next" onclick="{!c.SelectRecordTypeHandler}"/>
+                            </footer>
+                        </div>
+                    </section>
+                    <div class="slds-backdrop slds-backdrop_open"></div>
+                </div>
+                <!--#Record Type Selection#-->
+                <aura:set attribute="else">
+                    <!--Lightning Record Form-->
+                    <div style="height:640px">
+                        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_medium" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
+                            <div class="slds-modal__container">
+                                <aura:if isTrue="{! v.showSpinner }">
+                                    <lightning:spinner style="background-color: transparent;" alternativeText="Loading" size="medium" variant="brand"/>
+                                </aura:if>
+                                <div class="modal-header slds-modal__header empty slds-modal__header--empty" >
+                                    <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick="{!c.CancelNewRecord}">
+                                        <lightning:icon iconName="utility:close" size="x-small" alternativeText="Close"/>
+                                        <span class="slds-assistive-text">Close</span>
+                                    </button>
+                                    
+                                </div>
+                                <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1" style="border: 1px solid lightgray;">
+                                    <h2 class="inlineTitle slds-p-top--large slds-p-horizontal--medium slds-p-bottom--medium slds-text-heading--medium" style="text-align: center">New Contact  {!if(empty(v.selectedContactRecordTypeLabel),'', concat(' : ',v.selectedContactRecordTypeLabel))}</h2>
+                                    <lightning:recordEditForm aura:id="myRecordForm"
+                                                              onload="{!c.handleLoad}"
+                                                              onsubmit="{!c.handleSubmit}"
+                                                              onsuccess="{!c.handleSuccess}"
+                                                              onerror="{!c.handleError}"
+                                                              objectApiName="Contact"
+                                                              recordTypeId="{!v.selectedContactRecordType}">
+                                        
+                                        <!-- the messages component is for error messages -->
+                                        <lightning:messages />
+                                        <aura:iteration items="{!v.ContactFields.sections}" var="section" >
+                                            <aura:if isTrue="{!!equals(section.heading,'System Information')}">
+                                                <h3 class="slds-section__title slds-theme--shade primaryPaletteBorder test-id__section-header-container" >
+                                                    <span class="test-id__section-header-title section-header-title slds-p-horizontal--small slds-truncate" >
+                                                        {!section.heading}
+                                                    </span>
+                                                </h3>
+                                                <aura:iteration items="{!section.layoutRows}" var="row" >
+                                                    <div class="slds-grid slds-wrap">
+                                                        <aura:iteration items="{!row.layoutItems}" var="item" >
+                                                            <div class="slds-col slds-size_6-of-12">
+                                                                <span>
+                                                                    <aura:if isTrue="{!!equals(item.CummulativeAPIname,'contactName') &amp;&amp; !equals(item.lookupIdApiName,'RecordTypeId')}">
+                                                                        <aura:iteration items="{!item.layoutComponents}" var="cmp">
+                                                                            <aura:if isTrue="{! cmp.componentType=='Field' &amp;&amp; !equals(cmp.apiName,'OwnerId')}">
+                                                                                <lightning:inputField fieldName="{!cmp.apiName}" value="{!if(cmp.apiName=='AccountId',v.OpportunityRecord.AccountId,if(cmp.IsBooleanValue,cmp.value,''))}" />
+                                                                            </aura:if>
+                                                                        </aura:iteration>
+                                                                        <aura:set attribute="else">
+                                                                            <aura:if isTrue="{!equals(item.lookupIdApiName,'RecordTypeId')}">
+                                                                                <lightning:input disabled="true" name="RecordtypeId" label="Record Type" value="{!v.selectedContactRecordTypeLabel}"/>
+                                                                                <aura:set attribute="else">
+                                                                                    <lightning:inputField class="communlativeNameField" fieldName="Name"/>
+                                                                                </aura:set>
+                                                                            </aura:if>
+                                                                            
+                                                                        </aura:set>
+                                                                    </aura:if>
+                                                                </span>
+                                                            </div>
+                                                        </aura:iteration>
+                                                    </div> 
+                                                </aura:iteration>
+                                            </aura:if>
+                                        </aura:iteration>
+                                    </lightning:recordEditForm>
+                                </div>
+                                <footer class="slds-modal__footer">
+                                    <lightning:button label="Cancel" class="slds-button slds-button_neutral" onclick="{!c.CancelNewRecord}"/>
+                                    <lightning:button disabled="{!v.disabled}" variant="brand"  name="save" label="Save" onclick="{!c.handleSubmit}" />
+                                </footer>
+                            </div>
+                        </section>
+                        <div class="slds-backdrop slds-backdrop_open"></div>
+                    </div>
+                    <!--#Lightning Record Form#-->
+                </aura:set>
+            </aura:if>
+            
+            <aura:set attribute="else">
+                <div style="height:640px ">
+                    <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_medium" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
+                        <div class="slds-modal__container">
+                            <header class="slds-modal__header">
+                                <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick="{!c.Cancel}">
+                                    <lightning:icon iconName="utility:close" size="x-small" alternativeText="Close"/>
+                                    <span class="slds-assistive-text">Close</span>
+                                </button>
+                                <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Edit Contact Roles</h2>
+                            </header>
+                            <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                                <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                                    <thead>
+                                        <tr class="slds-line-height_reset">
+                                            <th class="slds-text-title_caps" scope="col" col-span="1">
+                                                <div class="slds-truncate" title="Contact Name">Contact Name</div>
+                                            </th>
+                                            <th class="slds-text-title_caps" scope="col" col-span="1">
+                                                <div class="slds-truncate" title="Account Name">Account Name</div>
+                                            </th>
+                                            <th class="slds-text-title_caps" scope="col" col-span="1">
+                                                <div class="slds-truncate" title="Role">Role</div>
+                                            </th>
+                                            <th class="slds-text-title_caps" scope="col" col-span="1">
+                                                <div class="slds-truncate" title="Primary">Primary</div>
+                                            </th>
+                                            <th class="slds-text-title_caps" scope="col" col-span="1">
+                                                <div class="slds-truncate" title="Opportunity Name"></div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <aura:iteration items="{!v.ContactRoleRecordsForEdit}" var="record" indexVar="index">
+                                            <aura:if isTrue="{!!record.toBeDeleted}">
+                                                <tr>
+                                                    <td col-span="1">
+                                                        <c:OpportunityContactRoleRecordLookUp indexVar="{!index}" objectAPIName="contact" IconName="standard:contact" label="Contact Name" selectedRecord="{!record.contactRecord}"/>
+                                                    </td>
+                                                    <td col-span="1">
+                                                        <input type="text" value="{!record.AccountRecord.Name}" disabled="true" class="slds-input" />
+                                                    </td>
+                                                    <td col-span="1">
+                                                        <lightning:select  aura:id="rolePicklist" value="{!record.Role}" class="options">
+                                                            <aura:iteration items="{!v.roleOptions}" var="option">
+                                                                <option text="{!option.label}" value="{!option.value}" />
+                                                            </aura:iteration>
+                                                        </lightning:select>
+                                                    </td> 
+                                                    <td col-span="1">
+                                                        <lightning:input type="checkbox" label="" name="isPrimary" checked="{!record.isPrimary}" onchange="{!c.disableAllCBWhenOnePrimary}"/>
+                                                    </td>
+                                                    <td col-span="1">
+                                                        <aura:if isTrue="{!!equals(record.AccountRecord.Id,v.OpportunityRecord.AccountId)}">
+                                                            <button class="slds-button slds-button_icon" title="Delete" onclick="{!c.DeleteRecord}" data-record="{!index}">
+                                                                <lightning:icon iconName="action:delete" size="xx-small" alternativeText="Delete"/>
+                                                                <span class="slds-assistive-text">Delete</span>
+                                                            </button>
+                                                        </aura:if>
+                                                    </td>
+                                                </tr>
+                                                
+                                            </aura:if>
+                                            
+                                        </aura:iteration>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <footer class="slds-modal__footer">
+                                <lightning:button label="New Contact Role" class="slds-button slds-button_brand" onclick="{!c.addRow}"/>
+                                <lightning:button label="Save" class="slds-button slds-button_brand" onclick="{!c.saveContactRoles}"/>
+                                <lightning:button label="Cancel" class="slds-button slds-button_neutral" onclick="{!c.Cancel}"/>
+                            </footer>
+                        </div>
+                    </section>
+                    <div class="slds-backdrop slds-backdrop_open"></div>
+                </div>
+            </aura:set>
+        </aura:if>
+    </aura:if>
+</aura:component>
